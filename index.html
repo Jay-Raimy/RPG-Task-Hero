@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1a1a24">
+  <title>RPG Task Hero</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="container">
+    <!-- Fiche Personnage -->
+    <div class="character-card">
+      <div class="hero-profile">
+        <!-- Avatar cliquable pour changer de personnage -->
+        <div class="avatar-container" id="avatar-display" onclick="toggleAvatarGender()" title="Cliquer pour changer de personnage">
+          <img id="avatar-img" class="avatar-img" src="" alt="Avatar">
+        </div>
+        
+        <div class="hero-info">
+          <div class="hero-header">
+            <div>
+              <h2 id="hero-name" style="margin:0;">Novice</h2>
+              <small id="hero-class" style="color: #aaa;">Classe : Apprenti</small>
+            </div>
+            <div class="gold-badge">🪙 <span id="hero-gold">0</span> Or</div>
+          </div>
+          
+          <div style="margin-top: 8px;">
+            <div class="level-badge">Niveau <span id="hero-level">1</span></div>
+            <div class="bar-container">
+              <div id="xp-fill" class="bar-fill"></div>
+              <div id="xp-text" class="bar-text">0 / 100 XP</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button id="notif-btn" class="btn-notif" onclick="requestNotificationPermission()">🔔 Activer les notifications</button>
+    </div>
+
+    <!-- Formulaire d'ajout de quête -->
+    <div class="task-section">
+      <h3>Nouvelle Quête</h3>
+      <div class="add-task-form">
+        <input type="text" id="task-input" placeholder="Titre (ex: Prendre les médicaments)..." required>
+        <textarea id="task-note" placeholder="Notes (ex: Médicament A 10mg, Médicament B...)" rows="2"></textarea>
+        
+        <div class="form-row">
+          <input type="datetime-local" id="task-time">
+          <label class="checkbox-label">
+            <input type="checkbox" id="task-is-daily"> 🔄 Quotidienne
+          </label>
+        </div>
+        
+        <button onclick="addTask()">+ Ajouter la quête</button>
+      </div>
+    </div>
+
+    <!-- Liste des Quêtes -->
+    <div class="task-section">
+      <h3>Quêtes Actives</h3>
+      <ul id="task-list" class="task-list"></ul>
+    </div>
+  </div>
+
+  <!-- Pop-up Récompense -->
+  <div id="popup" class="popup"></div>
+
+  <!-- Modal Choix de Classe -->
+  <div id="class-modal" class="modal">
+    <div class="modal-content">
+      <h2>🎉 FÉLICITATIONS !</h2>
+      <p>Vous avez atteint le <strong>Niveau 2</strong> ! Choisissez votre classe :</p>
+      <div class="class-options">
+        <div class="class-card" onclick="selectClass('Guerrier', '⚔️')">
+          <div class="class-icon">⚔️</div>
+          <h3>Guerrier</h3>
+        </div>
+        <div class="class-card" onclick="selectClass('Mage', '🧙‍♂️')">
+          <div class="class-icon">🧙‍♂️</div>
+          <h3>Mage</h3>
+        </div>
+        <div class="class-card" onclick="selectClass('Rôdeur', '🏹')">
+          <div class="class-icon">🏹</div>
+          <h3>Rôdeur</h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
