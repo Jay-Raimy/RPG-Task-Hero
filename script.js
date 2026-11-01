@@ -11,16 +11,17 @@ const AVATAR_IMAGES = [
   'images/avatar_femme.png'
 ];
 
-// --- 2. ÉTAT DU JEU ---
-let state = JSON.parse(localStorage.getItem('rpg_todo_state')) || {
-  className: 'Novice',
-  avatarIndex: 0,
-  level: 1,
-  xp: 0,
-  xpMax: 100,
-  gold: 0,
-  lastCheckDate: new Date().toDateString(),
-  tasks: []
+// --- 2. ÉTAT DU JEU (Sécurisé pour éviter tout crash si localStorage est ancien) ---
+let savedState = JSON.parse(localStorage.getItem('rpg_todo_state')) || {};
+let state = {
+  className: savedState.className || 'Novice',
+  avatarIndex: savedState.avatarIndex || 0,
+  level: savedState.level || 1,
+  xp: savedState.xp || 0,
+  xpMax: savedState.xpMax || 100,
+  gold: savedState.gold || 0,
+  lastCheckDate: savedState.lastCheckDate || new Date().toDateString(),
+  tasks: Array.isArray(savedState.tasks) ? savedState.tasks : []
 };
 
 // Fonction pour basculer d'avatar (Homme <-> Femme)
@@ -221,9 +222,70 @@ function deleteTask(index) {
 
 function showPopup(text) {
   const popup = document.getElementById('popup');
+  if (!popup) return;
   popup.innerHTML = text;
   popup.style.display = 'block';
   setTimeout(() => { popup.style.display = 'none'; }, 2200);
 }
 
-// --- 5. RENDU ET MISE À JOUR DE L'INTERFACE
+// --- 5. RENDU ET MISE À JOUR DE L'INTERFACE ---
+function render() {
+  const avatarImg = document.getElementById('avatar-img');
+  if (avatarImg) {
+    const safeIndex = (state.avatarIndex || 0) % AVATAR_IMAGES.length;
+    avatarImg.src = AVATAR_IMAGES[safeIndex];
+  }
+
+  const heroNameEl = document.getElementById('hero-name');
+  if (heroNameEl) heroNameEl.innerText = state.className === 'Novice' ? 'Novice' : state.className;
+
+  const heroClassEl = document.getElementById('hero-class');
+  if (heroClassEl) heroClassEl.innerText = `Classe : ${state.className}`;
+
+  const heroLevelEl = document.getElementById('hero-level');
+  if (heroLevelEl) heroLevelEl.innerText = state.level;
+
+  const heroGoldEl = document.getElementById('hero-gold');
+  if (heroGoldEl) heroGoldEl.innerText = state.gold;
+  
+  const xpFill = document.getElementById('xp-fill');
+  const xpText = document.getElementById('xp-text');
+  const xpPct = Math.min(100, Math.floor((state.xp / state.xpMax) * 100));
+  if (xpFill) xpFill.style.width = `${xpPct}%`;
+  if (xpText) xpText.innerText = `${state.xp} / ${state.xpMax} XP`;
+
+  const listEl = document.getElementById('task-list');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+
+  state.tasks.forEach((task, index) => {
+    const li = document.createElement('li');
+    li.className = `task-item ${task.isDaily ? 'daily' : ''} ${task.completedToday ? 'completed-daily' : ''}`;
+    
+    const timeFormatted = task.time ? new Date(task.time).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+
+    li.innerHTML = `
+      <div class="task-info">
+        <div>
+          <strong>${task.text}</strong>
+          ${task.isDaily ? '<span class="daily-badge">🔄 Quotidienne</span>' : ''}
+        </div>
+        ${task.note ? `<div class="task-note-text">📝 ${task.note}</div>` : ''}
+        ${timeFormatted ? `<span class="task-time">⏰ ${timeFormatted}</span>` : ''}
+      </div>
+      <div class="task-actions">
+        ${!task.completedToday ? `<button class="btn-complete" onclick="completeTask(${index})">✓</button>` : '<span>✅ Fait</span>'}
+        <button class="btn-delete" onclick="deleteTask(${index})">✕</button>
+      </div>
+    `;
+    listEl.appendChild(li);
+  });
+}
+
+// --- INITIALISATION AU CHARGEMENT ---
+checkDailyReset();
+checkNotificationStatus();
+render();
+
+// Vérification automatique des heures de quête toutes les 30 secondes
+setInterval(checkTaskNotifications, 30000);
