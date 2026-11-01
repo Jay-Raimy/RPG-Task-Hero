@@ -1,0 +1,21 @@
+{
+  "name": "RPG Task Hero",
+  "short_name": "Task Hero",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1a1a24",
+  "theme_color": "#1a1a24",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "images/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "images/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
