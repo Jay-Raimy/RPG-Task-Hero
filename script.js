@@ -1,4 +1,4 @@
-// --- 0. ENREGISTREMENT DU SERVICE WORKER (PWA) ---
+// Enregistrement du Service Worker
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js')
     .then(reg => console.log('Service Worker enregistré !', reg))
@@ -11,17 +11,16 @@ const AVATAR_IMAGES = [
   'images/avatar_femme.png'
 ];
 
-// --- 2. ÉTAT DU JEU (Sécurisé pour éviter tout crash si localStorage est ancien) ---
-let savedState = JSON.parse(localStorage.getItem('rpg_todo_state')) || {};
-let state = {
-  className: savedState.className || 'Novice',
-  avatarIndex: savedState.avatarIndex || 0,
-  level: savedState.level || 1,
-  xp: savedState.xp || 0,
-  xpMax: savedState.xpMax || 100,
-  gold: savedState.gold || 0,
-  lastCheckDate: savedState.lastCheckDate || new Date().toDateString(),
-  tasks: Array.isArray(savedState.tasks) ? savedState.tasks : []
+// --- 2. ÉTAT DU JEU ---
+let state = JSON.parse(localStorage.getItem('rpg_todo_state')) || {
+  className: 'Novice',
+  avatarIndex: 0,
+  level: 1,
+  xp: 0,
+  xpMax: 100,
+  gold: 0,
+  lastCheckDate: new Date().toDateString(),
+  tasks: []
 };
 
 // Fonction pour basculer d'avatar (Homme <-> Femme)
@@ -31,60 +30,40 @@ function toggleAvatarGender() {
 }
 
 // --- 3. NOTIFICATIONS & RAPPELS ---
-
-// Vérifie le statut des notifications et ajuste le bouton d'activation
-function checkNotificationStatus() {
-  const btn = document.getElementById('notif-btn');
-  if (!btn) return;
-
-  if (Notification.permission === 'granted') {
-    btn.style.display = 'none';
-  } else {
-    btn.style.display = 'block';
-    if (Notification.permission === 'denied') {
-      btn.innerText = '⚠️ Notifications bloquées (Cliquer pour régler)';
-    } else {
-      btn.innerText = '🔔 Activer les notifications';
-    }
-  }
-}
-
-// Demande l'autorisation ou explique comment débloquer en cas de refus
-function requestNotificationPermission() {
-  if (!("Notification" in window)) {
-    alert("Ce navigateur ne supporte pas les notifications.");
-    return;
-  }
-
-  if (Notification.permission === 'denied') {
-    alert("Les notifications sont actuellement bloquées pour ce site.\n\nPour les réactiver :\n1. Clique sur l'icône de cadenas ou de réglages à côté de l'adresse du site (en haut).\n2. Va dans 'Autorisations' et débloque les 'Notifications'.");
-    return;
-  }
-
-  Notification.requestPermission().then(permission => {
-    checkNotificationStatus();
-    if (permission === "granted") {
-      alert("Notifications activées avec succès ! ⚔️");
-    }
-  });
-}
-
-// Déclenche l'envoi d'une notification via le Service Worker
 function triggerNotification(title, body) {
   if (Notification.permission === 'granted') {
     if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+      // Envoie le message au Service Worker pour qu'il gère l'affichage sur mobile
       navigator.serviceWorker.controller.postMessage({
         type: 'SHOW_NOTIFICATION',
         title: title,
         body: body
       });
     } else {
+      // Fallback classique
       new Notification(title, { body: body });
     }
   }
 }
 
-// Réinitialisation automatique des quêtes quotidiennes
+function requestNotificationPermission() {
+  if (!("Notification" in window)) {
+    alert("Ce navigateur ne supporte pas les notifications.");
+    return;
+  }
+
+  Notification.requestPermission().then(permission => {
+    if (permission === "granted") {
+      alert("Notifications activées avec succès ! ⚔️");
+      // Masque le bouton une fois l'autorisation accordée
+      const btn = document.getElementById('notif-btn');
+      if (btn) btn.style.display = 'none';
+    } else if (permission === "denied") {
+      alert("Les notifications sont bloquées dans les paramètres de votre navigateur.");
+    }
+  });
+}
+
 function checkDailyReset() {
   const today = new Date().toDateString();
   if (state.lastCheckDate !== today) {
@@ -99,7 +78,6 @@ function checkDailyReset() {
   }
 }
 
-// Vérification continue de l'heure des quêtes
 function checkTaskNotifications() {
   if (!("Notification" in window) || Notification.permission !== "granted") return;
 
@@ -115,6 +93,7 @@ function checkTaskNotifications() {
       const taskTimePart = task.time.split('T')[1];
 
       if (taskTimePart === currentTimeStr) {
+        // CORRECTION : On utilise la fonction triggerNotification pour passer par le Service Worker mobile
         triggerNotification(
           `⚔️ Quête : ${task.text}`,
           task.note ? `📝 ${task.note}` : "C'est l'heure d'accomplir cette quête !"
@@ -142,6 +121,7 @@ function getRandomReward() {
   let goldGained = Math.floor(Math.random() * 6);  // 0 à 5 Or
 
   if (isCritical) {
+    // CORRECTION : Ajout correct des multiplications par 2
     xpGained = Math.max(10, xpGained * 2);
     goldGained = Math.max(5, goldGained * 2);
   }
@@ -160,6 +140,7 @@ function completeTask(index) {
   if (state.xp >= state.xpMax) {
     state.level += 1;
     state.xp -= state.xpMax;
+    // CORRECTION : Multiplication correcte pour l'augmentation du max XP
     state.xpMax = Math.floor(state.xpMax * 1.4);
     levelUp = true;
   }
@@ -222,7 +203,6 @@ function deleteTask(index) {
 
 function showPopup(text) {
   const popup = document.getElementById('popup');
-  if (!popup) return;
   popup.innerHTML = text;
   popup.style.display = 'block';
   setTimeout(() => { popup.style.display = 'none'; }, 2200);
@@ -236,26 +216,16 @@ function render() {
     avatarImg.src = AVATAR_IMAGES[safeIndex];
   }
 
-  const heroNameEl = document.getElementById('hero-name');
-  if (heroNameEl) heroNameEl.innerText = state.className === 'Novice' ? 'Novice' : state.className;
-
-  const heroClassEl = document.getElementById('hero-class');
-  if (heroClassEl) heroClassEl.innerText = `Classe : ${state.className}`;
-
-  const heroLevelEl = document.getElementById('hero-level');
-  if (heroLevelEl) heroLevelEl.innerText = state.level;
-
-  const heroGoldEl = document.getElementById('hero-gold');
-  if (heroGoldEl) heroGoldEl.innerText = state.gold;
+  document.getElementById('hero-name').innerText = state.className === 'Novice' ? 'Novice' : state.className;
+  document.getElementById('hero-class').innerText = `Classe : ${state.className}`;
+  document.getElementById('hero-level').innerText = state.level;
+  document.getElementById('hero-gold').innerText = state.gold;
   
-  const xpFill = document.getElementById('xp-fill');
-  const xpText = document.getElementById('xp-text');
   const xpPct = Math.min(100, Math.floor((state.xp / state.xpMax) * 100));
-  if (xpFill) xpFill.style.width = `${xpPct}%`;
-  if (xpText) xpText.innerText = `${state.xp} / ${state.xpMax} XP`;
+  document.getElementById('xp-fill').style.width = `${xpPct}%`;
+  document.getElementById('xp-text').innerText = `${state.xp} / ${state.xpMax} XP`;
 
   const listEl = document.getElementById('task-list');
-  if (!listEl) return;
   listEl.innerHTML = '';
 
   state.tasks.forEach((task, index) => {
@@ -268,6 +238,7 @@ function render() {
       <div class="task-info">
         <div>
           <strong>${task.text}</strong>
+          ${task.isData ? '' : ''}
           ${task.isDaily ? '<span class="daily-badge">🔄 Quotidienne</span>' : ''}
         </div>
         ${task.note ? `<div class="task-note-text">📝 ${task.note}</div>` : ''}
@@ -282,10 +253,15 @@ function render() {
   });
 }
 
-// --- INITIALISATION AU CHARGEMENT ---
+// Initialisation au chargement
 checkDailyReset();
-checkNotificationStatus();
 render();
 
 // Vérification automatique des heures de quête toutes les 30 secondes
 setInterval(checkTaskNotifications, 30000);
+
+// Masquer le bouton si les notifications sont déjà autorisées
+if (Notification.permission === 'granted') {
+  const btn = document.getElementById('notif-btn');
+  if (btn) btn.style.display = 'none';
+}
