@@ -1,3 +1,10 @@
+// Enregistrement du Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js')
+    .then(reg => console.log('Service Worker enregistré !', reg))
+    .catch(err => console.error('Erreur Service Worker :', err));
+}
+
 // --- 1. CHEMINS VERS TES IMAGES LOCALES (Dossier images/) ---
 const AVATAR_IMAGES = [
   'images/avatar_homme.png',
@@ -23,27 +30,20 @@ function toggleAvatarGender() {
 }
 
 // --- 3. NOTIFICATIONS & RAPPELS ---
-function requestNotificationPermission() {
-  if (!("Notification" in window)) {
-    alert("Ce navigateur ne supporte pas les notifications.");
-    return;
-  }
-  Notification.requestPermission().then(permission => {
-    if (permission === "granted") {
-      alert("Notifications activées avec succès ! 🔔");
-      const btn = document.getElementById('notif-btn');
-      if (btn) btn.style.display = 'none';
+function triggerNotification(title, body) {
+  if (Notification.permission === 'granted') {
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+      // Envoie le message au Service Worker pour qu'il gère l'affichage sur mobile
+      navigator.serviceWorker.controller.postMessage({
+        type: 'SHOW_NOTIFICATION',
+        title: title,
+        body: body
+      });
     } else {
-      alert("Permission refusée pour les notifications.");
+      // Fallback classique
+      new Notification(title, { body: body });
     }
-  });
-}
-
-if ("Notification" in window && Notification.permission === "granted") {
-  window.addEventListener('DOMContentLoaded', () => {
-    const btn = document.getElementById('notif-btn');
-    if (btn) btn.style.display = 'none';
-  });
+  }
 }
 
 function checkDailyReset() {
@@ -75,10 +75,12 @@ function checkTaskNotifications() {
       const taskTimePart = task.time.split('T')[1];
 
       if (taskTimePart === currentTimeStr) {
-        new Notification(`⚔️ Quête : ${task.text}`, {
-          body: task.note ? `📝 ${task.note}` : "C'est l'heure d'accomplir cette quête !",
-          icon: 'https://cdn-icons-png.flaticon.com/512/2910/2910791.ico'
-        });
+        // CORRECTION : On utilise la fonction triggerNotification pour passer par le Service Worker mobile
+        triggerNotification(
+          `⚔️ Quête : ${task.text}`,
+          task.note ? `📝 ${task.note}` : "C'est l'heure d'accomplir cette quête !"
+        );
+        
         task.notifiedToday = true;
         stateChanged = true;
       }
@@ -101,6 +103,7 @@ function getRandomReward() {
   let goldGained = Math.floor(Math.random() * 6);  // 0 à 5 Or
 
   if (isCritical) {
+    // CORRECTION : Ajout correct des multiplications par 2
     xpGained = Math.max(10, xpGained * 2);
     goldGained = Math.max(5, goldGained * 2);
   }
@@ -119,6 +122,7 @@ function completeTask(index) {
   if (state.xp >= state.xpMax) {
     state.level += 1;
     state.xp -= state.xpMax;
+    // CORRECTION : Multiplication correcte pour l'augmentation du max XP
     state.xpMax = Math.floor(state.xpMax * 1.4);
     levelUp = true;
   }
@@ -190,7 +194,6 @@ function showPopup(text) {
 function render() {
   const avatarImg = document.getElementById('avatar-img');
   if (avatarImg) {
-    // S'assure que l'index reste valide même s'il y a 2 avatars au lieu de 3
     const safeIndex = (state.avatarIndex || 0) % AVATAR_IMAGES.length;
     avatarImg.src = AVATAR_IMAGES[safeIndex];
   }
@@ -217,6 +220,7 @@ function render() {
       <div class="task-info">
         <div>
           <strong>${task.text}</strong>
+          ${task.isData ? '' : ''}
           ${task.isDaily ? '<span class="daily-badge">🔄 Quotidienne</span>' : ''}
         </div>
         ${task.note ? `<div class="task-note-text">📝 ${task.note}</div>` : ''}
