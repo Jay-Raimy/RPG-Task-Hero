@@ -259,3 +259,9 @@ render();
 
 // Vérification automatique des heures de quête toutes les 30 secondes
 setInterval(checkTaskNotifications, 30000);
+
+// Masquer le bouton si les notifications sont déjà autorisées
+if (Notification.permission === 'granted') {
+  const btn = document.getElementById('notif-btn');
+  if (btn) btn.style.display = 'none';
+}
