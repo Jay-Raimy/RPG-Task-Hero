@@ -46,6 +46,24 @@ function triggerNotification(title, body) {
   }
 }
 
+function requestNotificationPermission() {
+  if (!("Notification" in window)) {
+    alert("Ce navigateur ne supporte pas les notifications.");
+    return;
+  }
+
+  Notification.requestPermission().then(permission => {
+    if (permission === "granted") {
+      alert("Notifications activées avec succès ! ⚔️");
+      // Masque le bouton une fois l'autorisation accordée
+      const btn = document.getElementById('notif-btn');
+      if (btn) btn.style.display = 'none';
+    } else if (permission === "denied") {
+      alert("Les notifications sont bloquées dans les paramètres de votre navigateur.");
+    }
+  });
+}
+
 function checkDailyReset() {
   const today = new Date().toDateString();
   if (state.lastCheckDate !== today) {
